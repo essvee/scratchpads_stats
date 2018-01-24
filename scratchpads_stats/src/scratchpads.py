@@ -42,14 +42,12 @@ def get_databases(cursor):
         databases = [row[0] for row in cursor.fetchall()]
         for db in databases:
             cursor.execute(f"USE {db}")
-            # check it's a scratchpad and add to new list if so
-            cursor.execute("SHOW TABLES LIKE 'node_counter'")
-            scratch_dbs.append(db) if len(cursor.fetchall()) is not 0 else None
+            # presence of node_counter indicates scratchpad db
+            scratch_dbs.append(db) if cursor.execute("SHOW TABLES LIKE 'node_counter'") is not 0 else None
+            return scratch_dbs
 
     except pymysql.Error as e:
         print(e)
-
-    return scratch_dbs
 
 
 def query(cursor, sql):
@@ -61,7 +59,7 @@ def query(cursor, sql):
             for n in cursor.fetchall():
                 node_types[n[0]] = n[1]
             return node_types
-
+        
     except pymysql.Error as e:
         print(f"Error: {e} \nQuery: '{sql}'")
 
