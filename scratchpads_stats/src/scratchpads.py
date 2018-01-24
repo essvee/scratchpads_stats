@@ -14,6 +14,7 @@ def load():
 
     # Date last run
     scratch_stats['last_run'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    scratch_stats[datetime.datetime.now().strftime("%Y-%m")] = []
 
     with pymysql.connect(host=host, user=user, password=password) as cursor:
         scratch_dbs = get_databases(cursor)
@@ -31,8 +32,11 @@ def load():
                               last_update=query(cursor, last_update),
                               dwca_output=query(cursor, dwca_output),
                               created=query(cursor, created))
-            print(site_stats)
 
+            # Add to month list of site stats
+            scratch_stats[datetime.datetime.now().strftime("%Y-%m")].append(site_stats)
+            print(scratch_stats)
+            
 
 # Get a list of all available databases and filter out the non-scratchpads
 def get_databases(cursor):
@@ -44,7 +48,7 @@ def get_databases(cursor):
             cursor.execute(f"USE {db}")
             # presence of node_counter indicates scratchpad db
             scratch_dbs.append(db) if cursor.execute("SHOW TABLES LIKE 'node_counter'") is not 0 else None
-            return scratch_dbs
+        return scratch_dbs
 
     except pymysql.Error as e:
         print(e)
@@ -59,7 +63,7 @@ def query(cursor, sql):
             for n in cursor.fetchall():
                 node_types[n[0]] = n[1]
             return node_types
-        
+
     except pymysql.Error as e:
         print(f"Error: {e} \nQuery: '{sql}'")
 
