@@ -13,6 +13,8 @@ def load():
 
     # Date last run
     scratch_stats['last_run'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    # Make bucket for current month (assuming it's run near the end of the month...)
     scratch_stats[datetime.datetime.now().strftime("%Y-%m")] = []
 
     with pymysql.connect(host=host, user=user, password=password) as cursor:
