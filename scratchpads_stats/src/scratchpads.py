@@ -54,16 +54,10 @@ def get_databases(cursor):
         print(e)
 
 
+# Runs each query and returns single/list value
 def query(cursor, sql):
-    node_types = {}
     try:
-        if cursor.execute(sql) == 1:
-            return cursor.fetchone()[0]
-        else:
-            for n in cursor.fetchall():
-                node_types[n[0]] = n[1]
-            return node_types
-
+        return cursor.fetchone()[0] if cursor.execute(sql) == 1 else dict(cursor.fetchall())
     except pymysql.Error as e:
         print(f"Error: {e} \nQuery: '{sql}'")
 
