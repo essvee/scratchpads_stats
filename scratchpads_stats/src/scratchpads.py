@@ -5,9 +5,8 @@ import json
 
 
 def load():
-    # Check to see if there's an existing json file we need to load, or make a dict to populate the new one
     if os.path.exists("scratch_stats.json"):
-        with open("scratch_stats.json") as archive_file:
+        with open("scratch_stats.json", 'r') as archive_file:
             scratch_stats = json.load(archive_file)
     else:
         scratch_stats = {}
@@ -21,7 +20,6 @@ def load():
 
         for db in scratch_dbs:
             cursor.execute(f"USE {db}")
-            # TODO - add each site_month dict to a list when finished, then add complete list to month dict?
             site_stats = dict(name=db,
                               nodes=query(cursor, nodes),
                               total_nodes=query(cursor, total_nodes),
@@ -35,8 +33,10 @@ def load():
 
             # Add to month list of site stats
             scratch_stats[datetime.datetime.now().strftime("%Y-%m")].append(site_stats)
-            print(scratch_stats)
-            
+
+        with open('scratch_stats.json', 'w') as outfile:
+            json.dump(scratch_stats, outfile)
+
 
 # Get a list of all available databases and filter out the non-scratchpads
 def get_databases(cursor):
