@@ -13,9 +13,9 @@ def load():
 
     # Date last run
     scratch_stats['last_run'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    
+
     # Make bucket for current month (assuming it's run near the end of the month...)
-    scratch_stats[datetime.datetime.now().strftime("%Y-%m")] = []
+    scratch_stats[datetime.datetime.now().strftime("%Y-%m")] = {}
 
     with pymysql.connect(host=host, user=user, password=password) as cursor:
         scratch_dbs = get_databases(cursor)
@@ -34,7 +34,7 @@ def load():
                               created=query(cursor, created))
 
             # Add to month list of site stats
-            scratch_stats[datetime.datetime.now().strftime("%Y-%m")].append(site_stats)
+            scratch_stats[datetime.datetime.now().strftime("%Y-%m")][site_stats['name']] = site_stats
 
         with open('scratch_stats.json', 'w') as outfile:
             json.dump(scratch_stats, outfile)
@@ -78,7 +78,7 @@ created = "SELECT MIN(FROM_UNIXTIME(created, '%Y-%m-%d')) FROM node;"
 # Get auth details
 with open('server-permissions.txt', 'r') as f:
     keys = f.read().splitlines()
-    host, user, password, database = keys
+    host, user, password = keys
 
 if __name__ == '__main__':
     load()
