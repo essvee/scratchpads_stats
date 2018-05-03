@@ -27,8 +27,8 @@ def load():
                               total_nodes=query(cursor, total_nodes),
                               active_users=query(cursor, active_users),
                               recent_users=query(cursor, recent_users),
-                              total_views=int(query(cursor, total_views)),
-                              month_views=int(query(cursor, month_views)),
+                              total_views=int(query(cursor, total_views or 0)),
+                              month_views=int(query(cursor, month_views) or 0),
                               last_update=query(cursor, last_update),
                               dwca_output=query(cursor, dwca_output),
                               created=query(cursor, created))
