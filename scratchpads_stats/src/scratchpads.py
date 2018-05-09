@@ -23,19 +23,20 @@ def load():
             # Add key for new site + populate with header data
             if db not in scratch_stats['sites']:
                 scratch_stats['sites'][db] = {'name': db, 'created': query(cursor, created),
-                                              'updated': "", 'total_views': 0, 'results': {}}
+                                              'updated': "", 'total_views': 0, 'dwca': "", 'results': {}}
 
             # Update dynamic header stats
             scratch_stats['sites'][db]['updated'] = query(cursor, last_update)
             scratch_stats['sites'][db]['total_views'] = int(query(cursor, total_views) or 0)
+            scratch_stats['sites'][db]['dwca'] = query(cursor, dwca_output)
 
             # Get monthly stats
             site_stats = dict(nodes=query(cursor, nodes),
                               total_nodes=query(cursor, total_nodes),
+                              new_nodes=query(cursor, new_nodes) or 0,
                               active_users=query(cursor, active_users),
                               recent_users=query(cursor, recent_users),
-                              month_views=int(query(cursor, month_views) or 0),
-                              dwca_output=query(cursor, dwca_output))
+                              month_views=int(query(cursor, month_views) or 0))
 
             # Stash in current month bucket
             scratch_stats['sites'][db]['results'][datetime.datetime.now().strftime("%Y-%m")] = site_stats
@@ -69,8 +70,9 @@ def query(cursor, sql):
 
 
 # SQL statements
-nodes = "SELECT type, COUNT(*) FROM node GROUP BY type"
-total_nodes = "SELECT COUNT(*) FROM node"
+nodes = "SELECT type, COUNT(*) FROM node WHERE status = 1 GROUP BY type"
+total_nodes = "SELECT COUNT(*) FROM node WHERE status = 1"
+new_nodes = "SELECT COUNT(*) FROM node WHERE FROM_UNIXTIME(created) > DATE(NOW()) + INTERVAL -1 MONTH"
 active_users = "SELECT COUNT(*) FROM users WHERE name <> 'Scratchpad Team' and login <> 0"
 recent_users = "SELECT COUNT(*) FROM users WHERE FROM_UNIXTIME(login) > DATE(NOW()) + INTERVAL -1 MONTH"
 total_views = "SELECT SUM(totalcount) FROM node_counter"
