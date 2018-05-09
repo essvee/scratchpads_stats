@@ -27,9 +27,9 @@ def load():
 
             # Update dynamic header stats
             scratch_stats['sites'][db]['updated'] = query(cursor, last_update)
-            scratch_stats['sites'][db]['total_views'] = int(query(cursor, total_views or 0))
+            scratch_stats['sites'][db]['total_views'] = int(query(cursor, total_views) or 0)
 
-            # Get stats
+            # Get monthly stats
             site_stats = dict(nodes=query(cursor, nodes),
                               total_nodes=query(cursor, total_nodes),
                               active_users=query(cursor, active_users),
@@ -37,7 +37,7 @@ def load():
                               month_views=int(query(cursor, month_views) or 0),
                               dwca_output=query(cursor, dwca_output))
 
-            # Stash in current month
+            # Stash in current month bucket
             scratch_stats['sites'][db]['results'][datetime.datetime.now().strftime("%Y-%m")] = site_stats
 
         with open('scratch_stats_sites.json', 'w') as outfile:
