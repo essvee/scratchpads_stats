@@ -5,38 +5,42 @@ import json
 
 
 def load():
-    if os.path.exists("scratch_stats.json"):
-        with open("scratch_stats.json", 'r') as archive_file:
+    if os.path.exists("scratch_stats_sites.json"):
+        with open("scratch_stats_sites.json", 'r') as archive_file:
             scratch_stats = json.load(archive_file)
     else:
-        scratch_stats = {}
+        scratch_stats = {'sites': {}}
 
     # Date last run
     scratch_stats['last_run'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    # Make bucket for current month (assuming it's run near the end of the month...)
-    scratch_stats[datetime.datetime.now().strftime("%Y-%m")] = {}
 
     with pymysql.connect(host=host, user=user, password=password) as cursor:
         scratch_dbs = get_databases(cursor)
 
         for db in scratch_dbs:
             cursor.execute(f"USE {db}")
-            site_stats = dict(name=db,
-                              nodes=query(cursor, nodes),
+
+            # Add key for new site + populate with header data
+            if db not in scratch_stats['sites']:
+                scratch_stats['sites'][db] = {'name': db, 'created': query(cursor, created),
+                                              'updated': "", 'total_views': 0, 'results': {}}
+
+            # Update dynamic header stats
+            scratch_stats['sites'][db]['updated'] = query(cursor, last_update)
+            scratch_stats['sites'][db]['total_views'] = int(query(cursor, total_views) or 0)
+
+            # Get monthly stats
+            site_stats = dict(nodes=query(cursor, nodes),
                               total_nodes=query(cursor, total_nodes),
                               active_users=query(cursor, active_users),
                               recent_users=query(cursor, recent_users),
-                              total_views=int(query(cursor, total_views or 0)),
                               month_views=int(query(cursor, month_views) or 0),
-                              last_update=query(cursor, last_update),
-                              dwca_output=query(cursor, dwca_output),
-                              created=query(cursor, created))
+                              dwca_output=query(cursor, dwca_output))
 
-            # Add to month list of site stats
-            scratch_stats[datetime.datetime.now().strftime("%Y-%m")][site_stats['name']] = site_stats
+            # Stash in current month bucket
+            scratch_stats['sites'][db]['results'][datetime.datetime.now().strftime("%Y-%m")] = site_stats
 
-        with open('scratch_stats.json', 'w') as outfile:
+        with open('scratch_stats_sites.json', 'w') as outfile:
             json.dump(scratch_stats, outfile)
 
 
