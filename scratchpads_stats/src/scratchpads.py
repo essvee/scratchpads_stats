@@ -18,6 +18,8 @@ def load():
         scratch_dbs = get_databases(cursor)
 
         for db in scratch_dbs:
+            if db == "scratchpadseu":
+                continue
             cursor.execute(f"USE {db}")
 
             # Add key for new site + populate with header data
@@ -66,7 +68,8 @@ def query(cursor, sql):
     try:
         return cursor.fetchone()[0] if cursor.execute(sql) == 1 else dict(cursor.fetchall())
     except pymysql.Error as e:
-        print(f"Error: {e} \nQuery: '{sql}'")
+        error_message = "Error: " + str(e) + ". " + sql
+        print(error_message)
 
 
 # SQL statements
