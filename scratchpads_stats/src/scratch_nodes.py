@@ -1,9 +1,10 @@
 import pymysql
 import json
+import collections
 
 def main():
-
     results = []
+    types = {"biblio", "ecological_interactions", "location", "page", "specimen_observation", "spm"}
 
     with get_cursor('server-permissions.txt') as cursor:
         results = []
@@ -14,15 +15,19 @@ def main():
             db_name = "USE " + db
             cursor.execute(db_name)
 
-            cursor.execute("""SELECT nid, type, status, FROM_UNIXTIME(created, '%Y-%m-%d'), FROM_UNIXTIME(changed, '%Y-%m-%d') FROM node""")
+            cursor.execute("""SELECT type, DATE_FORMAT(FROM_UNIXTIME(created), '%m-%Y') FROM node WHERE status = 1;""")
             node_results = cursor.fetchall()
             for n in node_results:
-                nid, type, status, created, changed = n
-                node_list = [db, nid, type, status, created, changed]
-                results.append(node_list)
+                node_type, created = n
+                if node_type in types:
+                    results.append(node_type + " " + created)
+                else:
+                    results.append("other" + " " + created)
 
-    with open('scratch_stats_nodes.json', 'w') as outfile:
-        json.dump(results, outfile)
+    counter = collections.Counter(results)
+
+    with open('scratch_stats_node_counter.json', 'w') as outfile:
+        json.dump(counter, outfile)
 
 
 def auth(filename):
