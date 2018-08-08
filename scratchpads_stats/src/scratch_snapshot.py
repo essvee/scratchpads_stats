@@ -1,6 +1,7 @@
 import pymysql
 import json
 
+
 def load():
     scratch_stats = {}
 
