@@ -13,6 +13,10 @@ def main():
         get_emails(cursor, scratchpads)
 
 
+def get_views(cursor, db_list):
+    # TODO - implement
+    pass
+
 def get_emails(cursor, db_list):
     results_email = []
 
