@@ -17,7 +17,6 @@ def nodes_emails_users(cursor, db_list):
     server_name = platform.node()
     types = {"biblio", "ecological_interactions", "location", "page", "specimen_observation", "spm"}
     results_node = []
-    results_email = {}
     results_views = {}
     results_users = []
     current_month = date.today().strftime('%Y-%m')
@@ -56,21 +55,24 @@ def nodes_emails_users(cursor, db_list):
 
     counter = collections.Counter(results_node)
 
-    with open(f"scratch_stats_nodes_{server_name}.json", 'w') as outfile:
+    with open("scratch_stats_nodes_%s.json" % server_name, 'w') as outfile:
         json.dump(counter, outfile)
 
-    with open(f"scratch_stats_views_{server_name}.json", 'w') as outfile:
+    with open("scratch_stats_views_%s.json" % server_name, 'w') as outfile:
         json.dump(results_views, outfile)
 
     # Add monthly user counts to list on file
-    if os.path.exists(f"scratch_stats_users_{server_name}.json"):
-        with open(f"scratch_stats_users_{server_name}.json", 'r') as archive_file:
+    user_filename = "scratch_stats_users_%s.json" % server_name
+
+    if os.path.exists(user_filename):
+        with open("scratch_stats_users_%s.json" % server_name, 'r') as archive_file:
             data = json.load(archive_file)
     else:
         data = {'data': []}
 
-    with open(f"scratch_stats_users_{server_name}.json", 'w') as outfile:
-        data['data'].extend(results_users)
+    data['data'].extend(results_users)
+
+    with open("scratch_stats_users_%s.json" % server_name, 'w') as outfile:
         json.dump(data, outfile)
 
 
