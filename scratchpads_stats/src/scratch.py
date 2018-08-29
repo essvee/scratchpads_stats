@@ -1,70 +1,76 @@
 import collections
+from datetime import date, datetime
 
 import pymysql
 import json
+import platform
 
 
 def main():
-
     with get_cursor('server-permissions.txt') as cursor:
         # todo write count of scratch pads to json
         scratchpads = get_databases(cursor)
-        count_nodes(cursor, scratchpads)
-        get_emails(cursor, scratchpads)
+        nodes_emails_views(cursor, scratchpads)
 
-
-def get_views(cursor, db_list):
-    # TODO - implement
-    pass
-
-def get_emails(cursor, db_list):
+def nodes_emails_views(cursor, db_list):
+    server_name = platform.node()
+    types = {"biblio", "ecological_interactions", "location", "page", "specimen_observation", "spm"}
+    results_node = []
     results_email = []
+    results_views = []
+    results_users = []
+    month = date.today().strftime('%Y-%m')
 
     for db in db_list:
+
         if db == "scratchpadseu" or db == "cephbaseeolorg" or db == "statsscratchpads" or db == "vbranteu":
             continue
 
+        # SQL queries
+        node_sql = "SELECT type, DATE_FORMAT(FROM_UNIXTIME(created), '%%Y-%%m') " \
+                   "FROM %s.node WHERE status = 1;" % db
         email_sql = "SELECT mail FROM %s.users" \
                     " WHERE mail <> '' AND mail <> 'scratchpad@nhm.ac.uk' AND login <> 0;" % db
+        views_sql = "SELECT SUM(totalcount), FROM_UNIXTIME(timestamp, '%%Y-%%m') " \
+                    "FROM %s.node_counter GROUP BY FROM_UNIXTIME(timestamp, '%%Y-%%m')" % db
+        user_sql = "SELECT COUNT(*) FROM %s.users WHERE name <> 'Scratchpad Team' and login <> 0" % db
 
-        cursor.execute(email_sql)
-        emails = cursor.fetchall()
-        result_list = []
+        nodes = query(cursor, node_sql)
+        emails = query(cursor, email_sql)
+        views = query(cursor, views_sql)
+        users = query(cursor, user_sql)
 
-        for n in emails:
-            result_list.append((db, n[0]))
+        for e in emails:
+            results_email.append((db, e[0]))
 
-        results_email.extend(result_list)
+        for v in views:
+            count, month = v
+            results_views.append((db, int(count), month))
 
-    with open('scratch_stats_email.json', 'w') as outfile:
-        json.dump(results_email, outfile)
-
-
-def count_nodes(cursor, db_list):
-    types = {"biblio", "ecological_interactions", "location", "page", "specimen_observation", "spm"}
-    results = []
-
-    for db in db_list:
-        if db == "scratchpadseu" or db == "cephbaseeolorg" or db == "statsscratchpads" or db == "vbranteu":
-            continue
-
-        database_sql = "SELECT type, DATE_FORMAT(FROM_UNIXTIME(created), '%%Y-%%m') " \
-                       "FROM %s.node WHERE status = 1;" % db
-
-        cursor.execute(database_sql)
-        node_results = cursor.fetchall()
-
-        for n in node_results:
+        for n in nodes:
             node_type, created = n
             if node_type in types:
-                results.append(node_type + " " + created)
+                results_node.append(node_type + " " + created)
             else:
-                results.append("other" + " " + created)
+                results_node.append("other" + " " + created)
 
-    counter = collections.Counter(results)
+        for u in users:
+            results_users.append((month, db, u[0]))
 
-    with open('scratch_stats_nodes_1.json', 'w') as outfile:
+    counter = collections.Counter(results_node)
+
+    with open(f"scratch_stats_nodes_{server_name}.json", 'w') as outfile:
         json.dump(counter, outfile)
+
+    with open(f"scratch_stats_email_{server_name}.json", 'w') as outfile:
+        json.dump(results_email, outfile)
+
+    with open(f"scratch_stats_views_{server_name}.json", 'w') as outfile:
+        json.dump(results_views, outfile)
+
+    with open(f"scratch_stats_users_{server_name}.json", 'w') as outfile:
+        json.dump(results_users, outfile)
+
 
 
 def auth(filename):
@@ -91,11 +97,19 @@ def get_databases(cursor):
             # presence of node_counter indicates scratchpad db
             scratch_dbs.append(db) if cursor.execute("SHOW TABLES LIKE 'node_counter'") is not 0 else None
 
-        print(scratch_dbs)
         return scratch_dbs
 
     except pymysql.Error as e:
         print(e)
+
+
+def query(cursor, sql):
+    try:
+        cursor.execute(sql)
+        return cursor.fetchall()
+    except pymysql.Error as e:
+        error_message = "Error: " + str(e) + ". " + sql
+        print(error_message)
 
 
 if __name__ == '__main__':
