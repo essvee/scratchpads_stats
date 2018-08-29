@@ -1,25 +1,26 @@
 import collections
-from datetime import date, datetime
+from datetime import date
+import os
+import json
 
 import pymysql
 import json
 import platform
 
-
 def main():
     with get_cursor('server-permissions.txt') as cursor:
         # todo write count of scratch pads to json
         scratchpads = get_databases(cursor)
-        nodes_emails_views(cursor, scratchpads)
+        nodes_emails_users(cursor, scratchpads)
 
-def nodes_emails_views(cursor, db_list):
+def nodes_emails_users(cursor, db_list):
     server_name = platform.node()
     types = {"biblio", "ecological_interactions", "location", "page", "specimen_observation", "spm"}
     results_node = []
-    results_email = []
-    results_views = []
+    results_email = {}
+    results_views = {}
     results_users = []
-    month = date.today().strftime('%Y-%m')
+    current_month = date.today().strftime('%Y-%m')
 
     for db in db_list:
 
@@ -29,23 +30,19 @@ def nodes_emails_views(cursor, db_list):
         # SQL queries
         node_sql = "SELECT type, DATE_FORMAT(FROM_UNIXTIME(created), '%%Y-%%m') " \
                    "FROM %s.node WHERE status = 1;" % db
-        email_sql = "SELECT mail FROM %s.users" \
-                    " WHERE mail <> '' AND mail <> 'scratchpad@nhm.ac.uk' AND login <> 0;" % db
+
         views_sql = "SELECT SUM(totalcount), FROM_UNIXTIME(timestamp, '%%Y-%%m') " \
                     "FROM %s.node_counter GROUP BY FROM_UNIXTIME(timestamp, '%%Y-%%m')" % db
+
         user_sql = "SELECT COUNT(*) FROM %s.users WHERE name <> 'Scratchpad Team' and login <> 0" % db
 
         nodes = query(cursor, node_sql)
-        emails = query(cursor, email_sql)
         views = query(cursor, views_sql)
         users = query(cursor, user_sql)
 
-        for e in emails:
-            results_email.append((db, e[0]))
-
         for v in views:
             count, month = v
-            results_views.append((db, int(count), month))
+            results_views[db] = (month, int(count))
 
         for n in nodes:
             node_type, created = n
@@ -55,22 +52,26 @@ def nodes_emails_views(cursor, db_list):
                 results_node.append("other" + " " + created)
 
         for u in users:
-            results_users.append((month, db, u[0]))
+            results_users.append((current_month, db, u[0]))
 
     counter = collections.Counter(results_node)
 
     with open(f"scratch_stats_nodes_{server_name}.json", 'w') as outfile:
         json.dump(counter, outfile)
 
-    with open(f"scratch_stats_email_{server_name}.json", 'w') as outfile:
-        json.dump(results_email, outfile)
-
     with open(f"scratch_stats_views_{server_name}.json", 'w') as outfile:
         json.dump(results_views, outfile)
 
-    with open(f"scratch_stats_users_{server_name}.json", 'w') as outfile:
-        json.dump(results_users, outfile)
+    # Add monthly user counts to list on file
+    if os.path.exists(f"scratch_stats_users_{server_name}.json"):
+        with open(f"scratch_stats_users_{server_name}.json", 'r') as archive_file:
+            data = json.load(archive_file)
+    else:
+        data = {'data': []}
 
+    with open(f"scratch_stats_users_{server_name}.json", 'w') as outfile:
+        data['data'].extend(results_users)
+        json.dump(data, outfile)
 
 
 def auth(filename):
